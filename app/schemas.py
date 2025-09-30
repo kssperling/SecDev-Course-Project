@@ -4,7 +4,6 @@ from typing import Literal, Optional
 
 from pydantic import AnyHttpUrl, BaseModel, field_validator
 
-
 EntryKind = Literal["book", "article", "course", "video", "other"]
 EntryStatus = Literal["planned", "in_progress", "completed", "dropped"]
 

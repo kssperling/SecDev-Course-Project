@@ -1,22 +1,23 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Literal, Optional
-import sqlite3
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, Query, Response
 from pydantic import AnyHttpUrl, BaseModel, field_validator
+
+from app.auth import ApiError, get_current_user
 
 router = APIRouter(prefix="/entries", tags=["entries"])
 
-EntryKind = Literal["book", "article", "course", "video", "other"]
-EntryStatus = Literal["planned", "in_progress", "completed", "dropped"]
+EntryKind = Literal["book", "article", "paper", "video"]
+EntryStatus = Literal["todo", "reading", "done", "archived"]
 
 
 class EntryCreate(BaseModel):
     title: str
     kind: EntryKind
     link: Optional[AnyHttpUrl] = None
-    status: EntryStatus = "planned"
+    status: EntryStatus = "todo"
 
     @field_validator("title")
     @classmethod
@@ -56,152 +57,90 @@ class EntryOut(BaseModel):
     status: EntryStatus
 
 
-# Database functions
-def get_db():
-    conn = sqlite3.connect("reading.db")
-    conn.row_factory = sqlite3.Row
-    return conn
+_ENTRIES_DB: Dict[str, Dict[str, Any]] = {}
 
 
-def _find_entry(entry_id: int) -> Optional[Dict[str, Any]]:
-    conn = get_db()
-    entry = conn.execute(
-        "SELECT * FROM reading_entries WHERE id = ?", (entry_id,)
-    ).fetchone()
-    conn.close()
-    return dict(entry) if entry else None
+def _user_store(username: str) -> Dict[str, Any]:
+    if username not in _ENTRIES_DB:
+        _ENTRIES_DB[username] = {"seq": 0, "entries": []}
+    return _ENTRIES_DB[username]
 
 
-@router.post("", response_model=EntryOut, summary="Create reading entry")
-def create_entry(payload: EntryCreate):
-    conn = get_db()
-    try:
-        cursor = conn.execute(
-            "INSERT INTO reading_entries (title, kind, link, status) VALUES (?, ?, ?, ?)",
-            (payload.title, payload.kind, str(payload.link) if payload.link else None, payload.status)
-        )
-        conn.commit()
-
-        new_id = cursor.lastrowid
-        created_entry = conn.execute(
-            "SELECT * FROM reading_entries WHERE id = ?", (new_id,)
-        ).fetchone()
-        conn.close()
-
-        return dict(created_entry)
-    except sqlite3.IntegrityError as e:
-        conn.close()
-        raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
+def _next_id(us: Dict[str, Any]) -> int:
+    us["seq"] += 1
+    return us["seq"]
 
 
-@router.get("", response_model=list[EntryOut], summary="List entries (with ?status=)")
-def list_entries(status: Optional[EntryStatus] = None):
-    conn = get_db()
-
-    if status:
-        entries = conn.execute(
-            "SELECT * FROM reading_entries WHERE status = ?", (status,)
-        ).fetchall()
-    else:
-        entries = conn.execute("SELECT * FROM reading_entries").fetchall()
-
-    conn.close()
-    return [dict(entry) for entry in entries]
+def _find_entry(us: Dict[str, Any], entry_id: int) -> Optional[Dict[str, Any]]:
+    for e in us["entries"]:
+        if e["id"] == entry_id:
+            return e
+    return None
 
 
-@router.get("/{entry_id}", response_model=EntryOut, summary="Get entry by id")
-def get_entry(entry_id: int):
-    entry = _find_entry(entry_id)
-    if not entry:
-        raise HTTPException(status_code=404, detail="Entry not found")
+@router.post("", response_model=EntryOut, status_code=201, summary="Create entry")
+def create_entry(payload: EntryCreate, username: str = Depends(get_current_user)):
+    us = _user_store(username)
+    entry = {
+        "id": _next_id(us),
+        "title": payload.title,
+        "kind": payload.kind,
+        "link": str(payload.link) if payload.link is not None else None,
+        "status": payload.status,
+    }
+    us["entries"].append(entry)
     return entry
 
 
-@router.put("/{entry_id}", response_model=EntryOut, summary="Update entry")
-def update_entry(entry_id: int, payload: EntryUpdate):
-    conn = get_db()
+@router.get("", response_model=list[EntryOut], summary="List entries (with ?status=)")
+def list_entries(
+    username: str = Depends(get_current_user),
+    status_: Optional[EntryStatus] = Query(default=None, alias="status"),
+):
+    us = _user_store(username)
+    items = us["entries"]
+    if status_:
+        items = [e for e in items if e["status"] == status_]
+    return list(sorted(items, key=lambda e: e["id"], reverse=True))
 
-    # Check if entry exists
-    existing = _find_entry(entry_id)
-    if not existing:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Entry not found")
 
-    # Build update fields
-    update_fields = {}
+@router.get("/{entry_id}", response_model=EntryOut, summary="Get entry by id")
+def get_entry(entry_id: int, username: str = Depends(get_current_user)):
+    us = _user_store(username)
+    entry = _find_entry(us, entry_id)
+    if not entry:
+        raise ApiError("not_found", "entry not found", 404)
+    return entry
+
+
+@router.patch("/{entry_id}", response_model=EntryOut, summary="Patch entry")
+def patch_entry(
+    entry_id: int, payload: EntryUpdate, username: str = Depends(get_current_user)
+):
+    us = _user_store(username)
+    entry = _find_entry(us, entry_id)
+    if not entry:
+        raise ApiError("not_found", "entry not found", 404)
+
     if payload.title is not None:
-        update_fields["title"] = payload.title
+        entry["title"] = payload.title
     if payload.kind is not None:
-        update_fields["kind"] = payload.kind
+        entry["kind"] = payload.kind
     if payload.link is not None:
-        update_fields["link"] = str(payload.link)
+        entry["link"] = str(payload.link)
     if payload.status is not None:
-        update_fields["status"] = payload.status
-
-    if not update_fields:
-        conn.close()
-        raise HTTPException(status_code=422, detail="No fields to update")
-
-    # Build SQL query
-    set_clause = ", ".join([f"{field} = ?" for field in update_fields])
-    values = list(update_fields.values())
-    values.append(entry_id)
-
-    try:
-        conn.execute(
-            f"UPDATE reading_entries SET {set_clause} WHERE id = ?",
-            values
-        )
-        conn.commit()
-
-        updated_entry = conn.execute(
-            "SELECT * FROM reading_entries WHERE id = ?", (entry_id,)
-        ).fetchone()
-        conn.close()
-
-        return dict(updated_entry)
-    except sqlite3.IntegrityError as e:
-        conn.close()
-        raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
+        entry["status"] = payload.status
+    return entry
 
 
-@router.delete("/{entry_id}", summary="Delete entry")
-def delete_entry(entry_id: int):
-    conn = get_db()
-
-    existing = _find_entry(entry_id)
-    if not existing:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Entry not found")
-
-    conn.execute("DELETE FROM reading_entries WHERE id = ?", (entry_id,))
-    conn.commit()
-    conn.close()
-
-    return {"message": "Entry deleted successfully"}
+@router.delete("/{entry_id}", status_code=204, summary="Delete entry")
+def delete_entry(entry_id: int, username: str = Depends(get_current_user)):
+    us = _user_store(username)
+    entry = _find_entry(us, entry_id)
+    if not entry:
+        raise ApiError("not_found", "entry not found", 404)
+    us["entries"] = [e for e in us["entries"] if e["id"] != entry_id]
+    return Response(status_code=204)
 
 
-@router.get("/stats/summary", summary="Get reading statistics")
-def get_stats():
-    conn = get_db()
-
-    total = conn.execute("SELECT COUNT(*) as count FROM reading_entries").fetchone()["count"]
-
-    by_status = conn.execute(
-        "SELECT status, COUNT(*) as count FROM reading_entries GROUP BY status"
-    ).fetchall()
-
-    by_kind = conn.execute(
-        "SELECT kind, COUNT(*) as count FROM reading_entries GROUP BY kind"
-    ).fetchall()
-
-    conn.close()
-
-    return {
-        "total_entries": total,
-        "by_status": {row["status"]: row["count"] for row in by_status},
-        "by_kind": {row["kind"]: row["count"] for row in by_kind}
-    }
-
-
-__all__ = ["router"]
+__all__ = ["router", "_ENTRIES_DB"]

@@ -1,3 +1,4 @@
+# app/main.py
 from __future__ import annotations
 
 from typing import Dict
@@ -6,13 +7,13 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.auth import ApiError
 from app.entries import _ENTRIES_DB
 from app.entries import router as entries_router
 from app.errors import register_error_handlers
 
 app = FastAPI(title="SecDev Course App", version="0.1.0")
 register_error_handlers(app)
+
 
 class ApiError(Exception):
     def __init__(self, code: str, message: str, status: int = 400):
@@ -74,10 +75,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 _ITEMS_DB: Dict[int, Dict] = {}
 
 
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+# @app.get("/health")
+# def health():
+#     return {"status": "ok"}
 
 
 # Example minimal entity (for tests/demo)
@@ -91,14 +91,12 @@ def create_item(name: str = Query(min_length=1)):
     return _ITEMS_DB[new_id]
 
 
-
 @app.get("/items/{item_id}")
 def get_item(item_id: int):
     item = _ITEMS_DB.get(item_id)
     if not item:
         raise HTTPException(status_code=404)
     return item
-
 
 
 @app.get("/health", tags=["system"], summary="Health check")
