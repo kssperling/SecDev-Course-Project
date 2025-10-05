@@ -1,0 +1,14 @@
+#!/bin/bash
+
+current_branch=$(git branch --show-current)
+
+if [ "$current_branch" = "main" ]; then
+    echo "❌ PROTECTION: You are trying to push directly to main!"
+    echo "💡 Please create a feature branch:"
+    echo "   git checkout -b feature/your-feature-name"
+    echo "   git push origin feature/your-feature-name"
+    exit 1
+fi
+
+echo "✅ You're pushing to branch: $current_branch"
+exit 0
