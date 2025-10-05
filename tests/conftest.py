@@ -1,7 +1,27 @@
 # tests/conftest.py
+import os
 import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]  # корень репозитория
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+import pytest
+
+# Добавляем корневую директорию в путь Python
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from fastapi.testclient import TestClient
+
+from app.main import _ENTRIES_DB, app  # Теперь импортируем из корня
+
+
+@pytest.fixture(autouse=True)
+def reset_state():
+    """Очищаем in-memory хранилище перед/после каждого теста."""
+    _ENTRIES_DB.clear()
+    yield
+    _ENTRIES_DB.clear()
+
+
+@pytest.fixture()
+def client():
+    """HTTP-клиент FastAPI для интеграционных тестов."""
+    with TestClient(app) as c:
+        yield c

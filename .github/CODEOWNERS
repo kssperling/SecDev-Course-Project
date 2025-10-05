@@ -1,0 +1,13 @@
+# CODEOWNERS
+
+# Global owner
+* @kssperling
+
+# Specific paths
+/app/ @kssperling
+/tests/ @kssperling
+.github/ @kssperling
+
+# Documentation
+README.md @kssperling
+CONTRIBUTING.md @kssperling

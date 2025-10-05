@@ -1,0 +1,18 @@
+name: 🔒 Protect main branch
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  block-direct-pushes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block direct pushes to main
+        run: |
+          echo "❌ ERROR: Direct pushes to main are not allowed!"
+          echo "📝 Please create a Pull Request instead:"
+          echo "   git checkout -b feature/your-feature"
+          echo "   git push origin feature/your-feature"
+          echo "   Then create PR on GitHub"
+          exit 1
