@@ -116,7 +116,9 @@ def get_entry(entry_id: int, username: str = Depends(get_current_user)):
 
 
 @router.patch("/{entry_id}", response_model=EntryOut, summary="Patch entry")
-def patch_entry(entry_id: int, payload: EntryUpdate, username: str = Depends(get_current_user)):
+def patch_entry(
+    entry_id: int, payload: EntryUpdate, username: str = Depends(get_current_user)
+):
     us = _user_store(username)
     entry = _find_entry(us, entry_id)
     if not entry:
