@@ -118,8 +118,8 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 @app.get("/health", tags=["system"], summary="Health check")
 @limiter.limit("100/minute")
-def health(request: Request):
-    return {"status": "ok"}
+# def health(request: Request):
+#     return {"status": "ok"}
 
 
 @app.get("/entries", response_model=list[EntryOut], summary="List entries")
