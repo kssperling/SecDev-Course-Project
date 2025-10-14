@@ -9,7 +9,14 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
 from app.auth import get_current_user
-from app.entries import _ENTRIES_DB, EntryCreate, EntryOut, EntryStatus, _next_id, _user_store
+from app.entries import (
+    _ENTRIES_DB,
+    EntryCreate,
+    EntryOut,
+    EntryStatus,
+    _next_id,
+    _user_store,
+)
 from app.entries import router as entries_router
 from app.errors import register_error_handlers
 from app.security import limiter, rate_limit_exceeded_handler
