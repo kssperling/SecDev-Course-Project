@@ -82,7 +82,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 _ITEMS_DB: Dict[int, Dict] = {}
 
-
 _DB = {"items": []}
 
 
