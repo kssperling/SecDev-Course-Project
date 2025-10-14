@@ -1,15 +1,18 @@
 # app/main.py
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Optional
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 
-from app.entries import _ENTRIES_DB
+from app.auth import get_current_user
+from app.entries import _ENTRIES_DB, EntryCreate, EntryOut, EntryStatus, _next_id, _user_store
 from app.entries import router as entries_router
 from app.errors import register_error_handlers
+from app.security import limiter, rate_limit_exceeded_handler
 
 app = FastAPI(title="SecDev Course App", version="0.1.0")
 register_error_handlers(app)
@@ -106,3 +109,47 @@ def health():
 
 app.include_router(entries_router)
 __all__ = ["app", "_ENTRIES_DB"]
+
+
+# Initialize rate limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
+
+@app.get("/health", tags=["system"], summary="Health check")
+@limiter.limit("100/minute")
+def health(request: Request):
+    return {"status": "ok"}
+
+
+@app.get("/entries", response_model=list[EntryOut], summary="List entries")
+@limiter.limit("60/minute")
+def list_entries(
+    request: Request,  # Добавлен request для limiter
+    username: str = Depends(get_current_user),
+    status_: Optional[EntryStatus] = Query(default=None, alias="status"),
+):
+    us = _user_store(username)
+    items = us["entries"]
+    if status_:
+        items = [e for e in items if e["status"] == status_]
+    return list(sorted(items, key=lambda e: e["id"], reverse=True))
+
+
+@app.post("/entries", response_model=EntryOut, status_code=201, summary="Create entry")
+@limiter.limit("30/minute")
+def create_entry(
+    request: Request,  # Добавлен request для limiter
+    payload: EntryCreate,
+    username: str = Depends(get_current_user),
+):
+    us = _user_store(username)
+    entry = {
+        "id": _next_id(us),
+        "title": payload.title,
+        "kind": payload.kind,
+        "link": str(payload.link) if payload.link is not None else None,
+        "status": payload.status,
+    }
+    us["entries"].append(entry)
+    return entry
