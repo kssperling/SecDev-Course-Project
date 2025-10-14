@@ -57,10 +57,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         e = dict(err)
         ctx = e.get("ctx")
         if isinstance(ctx, dict):
-            e["ctx"] = {
-                k: (str(v) if isinstance(v, BaseException) else v)
-                for k, v in ctx.items()
-            }
+            e["ctx"] = {k: (str(v) if isinstance(v, BaseException) else v) for k, v in ctx.items()}
         safe_details.append(e)
 
     return JSONResponse(
