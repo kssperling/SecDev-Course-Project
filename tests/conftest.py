@@ -1,15 +1,13 @@
-# tests/conftest.py
 import os
 import sys
 
 import pytest
-
-# Добавляем корневую директорию в путь Python
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from fastapi.testclient import TestClient
 
 from app.main import _ENTRIES_DB, app  # Теперь импортируем из корня
+
+# Добавляем корневую директорию в путь Python
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 @pytest.fixture(autouse=True)
