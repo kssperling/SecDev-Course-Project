@@ -1,7 +1,6 @@
-# app/main.py
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Dict
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
@@ -16,6 +15,12 @@ from app.security import limiter, rate_limit_exceeded_handler
 
 app = FastAPI(title="SecDev Course App", version="0.1.0")
 register_error_handlers(app)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
+app.include_router(entries_router)
+__all__ = ["app", "_ENTRIES_DB"]
 
 
 class ApiError(Exception):
@@ -78,12 +83,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 _ITEMS_DB: Dict[int, Dict] = {}
 
 
-# @app.get("/health")
-# def health():
-#     return {"status": "ok"}
-
-
-# Example minimal entity (for tests/demo)
 _DB = {"items": []}
 
 
@@ -103,31 +102,17 @@ def get_item(item_id: int):
 
 
 @app.get("/health", tags=["system"], summary="Health check")
-def health():
-    return {"status": "ok"}
-
-
-app.include_router(entries_router)
-__all__ = ["app", "_ENTRIES_DB"]
-
-
-# Initialize rate limiter
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
-
-
-@app.get("/health", tags=["system"], summary="Health check")
 @limiter.limit("100/minute")
-# def health(request: Request):
-#     return {"status": "ok"}
+def health(request: Request):
+    return {"status": "ok"}
 
 
 @app.get("/entries", response_model=list[EntryOut], summary="List entries")
 @limiter.limit("60/minute")
 def list_entries(
-    request: Request,  # Добавлен request для limiter
+    request: Request,
     username: str = Depends(get_current_user),
-    status_: Optional[EntryStatus] = Query(default=None, alias="status"),
+    status_: EntryStatus | None = Query(default=None, alias="status"),
 ):
     us = _user_store(username)
     items = us["entries"]
@@ -139,7 +124,7 @@ def list_entries(
 @app.post("/entries", response_model=EntryOut, status_code=201, summary="Create entry")
 @limiter.limit("30/minute")
 def create_entry(
-    request: Request,  # Добавлен request для limiter
+    request: Request,
     payload: EntryCreate,
     username: str = Depends(get_current_user),
 ):
