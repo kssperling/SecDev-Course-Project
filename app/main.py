@@ -11,9 +11,12 @@ from app.auth import get_current_user
 from app.entries import _ENTRIES_DB, EntryOut, EntryStatus, _next_id, _user_store
 from app.entries import router as entries_router
 from app.errors import register_error_handlers
+from app.errors_secure import secure_http_exception_handler, secure_validation_exception_handler
+from app.errors_secure_fixed import generic_exception_handler
 from app.security import limiter, rate_limit_exceeded_handler
 
 from .entries import EntryCreate
+from .resource_monitor import resource_monitor
 
 app = FastAPI(title="SecDev Course App", version="0.1.0")
 register_error_handlers(app)
@@ -23,6 +26,25 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.include_router(entries_router)
 __all__ = ["app", "_ENTRIES_DB"]
+
+
+app = FastAPI(title="SecDev Course App", version="0.1.0")
+
+
+# Регистрируем обработчики ПЕРВЫМИ
+app.add_exception_handler(RequestValidationError, secure_validation_exception_handler)
+app.add_exception_handler(HTTPException, secure_http_exception_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
+
+# Остальной код...
+register_error_handlers(
+    app
+)  # Если эта функция регистрирует старые обработчики - УДАЛИТЕ её
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
+app.include_router(entries_router)
 
 
 class ApiError(Exception):
@@ -139,3 +161,54 @@ def create_entry(
     }
     us["entries"].append(entry)
     return entry
+
+
+# main.py (дополнение)
+
+
+@app.get("/system/health", tags=["system"])
+def system_health():
+    """Расширенная проверка здоровья системы"""
+    health_data = resource_monitor.get_system_health()
+
+    if health_data["status"] == "degraded":
+        return JSONResponse(
+            status_code=503, content={"status": "degraded", "details": health_data}
+        )
+
+    return {"status": "healthy", "details": health_data}
+
+
+@app.get("/system/metrics", tags=["system"])
+def system_metrics():
+    """Метрики системы для мониторинга"""
+    return resource_monitor.get_system_health()
+
+
+# Заменяем обработчики ошибок
+app.add_exception_handler(RequestValidationError, secure_validation_exception_handler)
+app.add_exception_handler(HTTPException, secure_http_exception_handler)
+
+
+# # Защищенные эндпоинты
+# @app.post("/secure/entries")
+# @secure_error_handler
+# def create_secure_entry(
+#         request: Request,
+#         payload: SecureEntryCreate,  # Используем защищенную схему
+#         username: str = Depends(get_current_user)
+# ):
+#     # Существующая логика с дополнительной валидацией
+#     us = _user_store(username)
+#     entry_id = _next_id(us)
+#     entry = {
+#         "id": entry_id,
+#         "title": payload.title,
+#         "kind": payload.kind,
+#         "link": payload.link,
+#         "status": payload.status,
+#     }
+#     us["entries"].append(entry)
+#
+#     log_audit_event(username, AuditOperation.CREATE, entry_id)
+#     return entry
