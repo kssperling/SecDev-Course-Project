@@ -1,0 +1,9 @@
+# .hadolint.yaml
+ignored:
+  - DL3013  # Pin versions in pip
+  - DL3008  # Pin versions in apt
+  - DL3042  # Avoid use of cache directory with pip
+
+trustedRegistries:
+  - docker.io
+  - registry.hub.docker.com

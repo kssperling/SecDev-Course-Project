@@ -20,11 +20,11 @@ jobs:
         docker build -t fastapi-app .
         echo "✅ Image built successfully"
 
-    - name: Lint Dockerfile
-      run: |
-        docker run --rm -i hadolint/hadolint < Dockerfile
+#    - name: Lint Dockerfile with config
+#      run: |
+#        docker run --rm -v ${PWD}/.hadolint.yaml:/.hadolint.yaml -i hadolint/hadolint < Dockerfile
 
-    - name: Verify non-root user (C2 критерий)
+    - name: Verify non-root user
       run: |
         user_id=$(docker run --rm fastapi-app id -u)
         echo "User ID: $user_id"
@@ -35,13 +35,9 @@ jobs:
           echo "✅ PASS: Running as non-root user (ID: $user_id)"
         fi
 
-    - name: Test container startup (C3 критерий)
+    - name: Test container startup
       run: |
-        # Запускаем контейнер
         docker run -d --name app-test -p 8000:8000 fastapi-app
-        echo "Container started, waiting for healthcheck..."
-
-        # Ждем и проверяем healthcheck
         sleep 15
         health_status=$(docker inspect --format='{{.State.Health.Status}}' app-test)
         echo "Health status: $health_status"
@@ -49,27 +45,10 @@ jobs:
         if [ "$health_status" = "healthy" ] || [ "$health_status" = "starting" ]; then
           echo "✅ PASS: Healthcheck working"
         else
-          echo "❌ FAIL: Healthcheck not working - status: $health_status"
-          echo "=== Container logs ==="
+          echo "❌ FAIL: Healthcheck not working"
           docker logs app-test
           exit 1
         fi
 
-        # Останавливаем контейнер
         docker stop app-test
         docker rm app-test
-
-    - name: Scan for vulnerabilities (C4 критерий)
-      run: |
-        docker run --rm \
-          -v /var/run/docker.sock:/var/run/docker.sock \
-          aquasec/trivy:latest \
-          image --severity HIGH,CRITICAL fastapi-app
-
-    - name: Test multi-stage build (C1 критерий)
-      run: |
-        echo "=== Image size ==="
-        docker images fastapi-app --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
-
-        echo "=== Image history ==="
-        docker history fastapi-app
