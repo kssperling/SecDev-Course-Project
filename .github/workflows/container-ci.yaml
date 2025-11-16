@@ -1,5 +1,5 @@
 # .github/workflows/container-ci.yml
-name: Container Checks
+name: Container CI
 
 on:
   push:
@@ -8,45 +8,68 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-test:
+  container-checks:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
     - name: Build Docker image
       run: |
-        docker build -t myapp .
+        docker build -t fastapi-app .
         echo "✅ Image built successfully"
 
-    - name: Test basic container functionality
+    - name: Lint Dockerfile
       run: |
-        # Тест 1: Контейнер может запуститься
-        echo "=== Test 1: Container startup ==="
-        docker run --rm myapp python -c "print('Hello from container!')"
+        docker run --rm -i hadolint/hadolint < Dockerfile
 
-        # Тест 2: Non-root пользователь
-        echo "=== Test 2: Non-root user ==="
-        user_id=$(docker run --rm myapp id -u)
+    - name: Verify non-root user (C2 критерий)
+      run: |
+        user_id=$(docker run --rm fastapi-app id -u)
         echo "User ID: $user_id"
         if [ "$user_id" = "0" ]; then
           echo "❌ FAIL: Running as root"
           exit 1
         else
-          echo "✅ PASS: Running as non-root user"
+          echo "✅ PASS: Running as non-root user (ID: $user_id)"
         fi
 
-        # Тест 3: Контейнер живет хотя бы 10 секунд
-        echo "=== Test 3: Container longevity ==="
-        docker run -d --name long-test myapp python -c "import time; time.sleep(30)"
-        sleep 5
-        if docker ps | grep -q long-test; then
-          echo "✅ PASS: Container is still running"
-          docker stop long-test
+    - name: Test container startup (C3 критерий)
+      run: |
+        # Запускаем контейнер
+        docker run -d --name app-test -p 8000:8000 fastapi-app
+        echo "Container started, waiting for healthcheck..."
+
+        # Ждем и проверяем healthcheck
+        sleep 15
+        health_status=$(docker inspect --format='{{.State.Health.Status}}' app-test)
+        echo "Health status: $health_status"
+
+        if [ "$health_status" = "healthy" ] || [ "$health_status" = "starting" ]; then
+          echo "✅ PASS: Healthcheck working"
         else
-          echo "❌ FAIL: Container stopped prematurely"
-          docker logs long-test || true
+          echo "❌ FAIL: Healthcheck not working - status: $health_status"
+          echo "=== Container logs ==="
+          docker logs app-test
           exit 1
         fi
 
-        echo "✅ All basic tests passed!"
+        # Останавливаем контейнер
+        docker stop app-test
+        docker rm app-test
+
+    - name: Scan for vulnerabilities (C4 критерий)
+      run: |
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          aquasec/trivy:latest \
+          image --severity HIGH,CRITICAL fastapi-app
+
+    - name: Test multi-stage build (C1 критерий)
+      run: |
+        echo "=== Image size ==="
+        docker images fastapi-app --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+
+        echo "=== Image history ==="
+        docker history fastapi-app

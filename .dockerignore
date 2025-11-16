@@ -1,21 +1,16 @@
+# .dockerignore
 .git
-.gitignore
-.gitattributes
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.sqlite
-*.db
-.venv/
-dist/
-build/
 .pytest_cache/
 .coverage
 htmlcov/
-node_modules/
-.env
+dist/
+build/
 .tox
+.env
 .venv
 venv/
 .idea
@@ -27,3 +22,7 @@ docker-compose*
 .dockerignore
 README.md
 *.sqlite3
+*.db
+tests/
+*.toml
+*.lock
