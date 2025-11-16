@@ -1,0 +1,49 @@
+# .github/workflows/container-ci.yml
+name: Container CI
+
+on:
+  push:
+    branches: [ p07-container-hardening ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: |
+        docker build -t fastapi-app:latest .
+
+    - name: Run Hadolint
+      uses: hadolint/hadolint-action@v3.1.0
+      with:
+        dockerfile: Dockerfile
+
+    - name: Scan image with Trivy
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'fastapi-app:latest'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: actions/upload-artifact@v3
+      with:
+        name: trivy-scan-results
+        path: trivy-results.sarif
+
+    - name: Test container health
+      run: |
+        docker run -d --name test-app -p 8000:8000 fastapi-app:latest
+        sleep 10
+        docker ps
+        curl -f http://localhost:8000/health || exit 1
+        docker stop test-app
+
+    - name: Verify non-root user
+      run: |
+        docker run --rm fastapi-app:test sh -c 'id -u' | grep -v '^0$'
