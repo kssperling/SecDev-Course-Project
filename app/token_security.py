@@ -65,9 +65,7 @@ class TokenManager:
         """Статистика токенов (для админки)"""
         return {
             "total_tokens": len(self._token_map),
-            "active_users": list(
-                set(data["username"] for data in self._token_map.values())
-            ),
+            "active_users": list(set(data["username"] for data in self._token_map.values())),
         }
 
 
