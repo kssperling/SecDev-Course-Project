@@ -38,3 +38,8 @@
 2025-11-16 22:01:27,733 - AUDIT: {'timestamp': '2025-11-16T19:01:27.733202', 'user_id': 'alice', 'operation': 'read_entry', 'entry_id': 1, 'details': {}}
 2025-11-16 22:01:27,734 - AUDIT: {'timestamp': '2025-11-16T19:01:27.734811', 'user_id': 'alice', 'operation': 'update_entry', 'entry_id': 1, 'details': {'changes': {'status': {'old': 'todo', 'new': 'reading'}}}}
 2025-11-16 22:01:27,735 - AUDIT: {'timestamp': '2025-11-16T19:01:27.735344', 'user_id': 'alice', 'operation': 'delete_entry', 'entry_id': 1, 'details': {'title': 'Clean Architecture'}}
+2025-11-16 22:06:23,105 - AUDIT: {'timestamp': '2025-11-16T19:06:23.104991', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 1, 'details': {}}
+2025-11-16 22:06:23,108 - AUDIT: {'timestamp': '2025-11-16T19:06:23.108978', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 1, 'details': {}}
+2025-11-16 22:06:23,109 - AUDIT: {'timestamp': '2025-11-16T19:06:23.109467', 'user_id': 'alice', 'operation': 'read_entry', 'entry_id': 1, 'details': {}}
+2025-11-16 22:06:23,110 - AUDIT: {'timestamp': '2025-11-16T19:06:23.110818', 'user_id': 'alice', 'operation': 'update_entry', 'entry_id': 1, 'details': {'changes': {'status': {'old': 'todo', 'new': 'reading'}}}}
+2025-11-16 22:06:23,111 - AUDIT: {'timestamp': '2025-11-16T19:06:23.111274', 'user_id': 'alice', 'operation': 'delete_entry', 'entry_id': 1, 'details': {'title': 'Clean Architecture'}}
