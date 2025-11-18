@@ -50,9 +50,7 @@ def test_crud_flow(client):
 
 
 def test_validation(client):
-    r = client.post(
-        "/entries", json={"title": "", "kind": "book", "status": "todo"}, headers=TOK
-    )
+    r = client.post("/entries", json={"title": "", "kind": "book", "status": "todo"}, headers=TOK)
     assert r.status_code == 422
     r = client.get("/entries?status=weird", headers=TOK)
     assert r.status_code == 422
