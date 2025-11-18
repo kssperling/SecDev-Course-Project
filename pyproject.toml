@@ -1,8 +1,15 @@
 [tool.ruff]
+select = ["E", "F", "W", "I"]
 line-length = 100
-select = ["E","F","W","I"]
 target-version = "py311"
-exclude = ["venv",".venv","build","dist"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
 
 [tool.isort]
 profile = "black"
