@@ -178,3 +178,18 @@
 2025-11-18 14:19:23,331 - AUDIT: {'timestamp': '2025-11-18T11:19:23.331388', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 8, 'details': {}}
 2025-11-18 14:19:23,332 - AUDIT: {'timestamp': '2025-11-18T11:19:23.332164', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 9, 'details': {}}
 2025-11-18 14:19:23,332 - AUDIT: {'timestamp': '2025-11-18T11:19:23.332931', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 10, 'details': {}}
+2025-11-18 14:37:22,148 - AUDIT: {'timestamp': '2025-11-18T11:37:22.148611', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 1, 'details': {}}
+2025-11-18 14:37:22,152 - AUDIT: {'timestamp': '2025-11-18T11:37:22.152188', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 1, 'details': {}}
+2025-11-18 14:37:22,152 - AUDIT: {'timestamp': '2025-11-18T11:37:22.152721', 'user_id': 'alice', 'operation': 'read_entry', 'entry_id': 1, 'details': {}}
+2025-11-18 14:37:22,154 - AUDIT: {'timestamp': '2025-11-18T11:37:22.154215', 'user_id': 'alice', 'operation': 'update_entry', 'entry_id': 1, 'details': {'changes': {'status': {'old': 'todo', 'new': 'reading'}}}}
+2025-11-18 14:37:22,154 - AUDIT: {'timestamp': '2025-11-18T11:37:22.154791', 'user_id': 'alice', 'operation': 'delete_entry', 'entry_id': 1, 'details': {'title': 'Clean Architecture'}}
+2025-11-18 14:37:22,199 - AUDIT: {'timestamp': '2025-11-18T11:37:22.199119', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 1, 'details': {}}
+2025-11-18 14:37:22,200 - AUDIT: {'timestamp': '2025-11-18T11:37:22.200557', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 2, 'details': {}}
+2025-11-18 14:37:22,201 - AUDIT: {'timestamp': '2025-11-18T11:37:22.201850', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 3, 'details': {}}
+2025-11-18 14:37:22,203 - AUDIT: {'timestamp': '2025-11-18T11:37:22.203193', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 4, 'details': {}}
+2025-11-18 14:37:22,204 - AUDIT: {'timestamp': '2025-11-18T11:37:22.204118', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 5, 'details': {}}
+2025-11-18 14:37:22,205 - AUDIT: {'timestamp': '2025-11-18T11:37:22.205261', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 6, 'details': {}}
+2025-11-18 14:37:22,206 - AUDIT: {'timestamp': '2025-11-18T11:37:22.206212', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 7, 'details': {}}
+2025-11-18 14:37:22,207 - AUDIT: {'timestamp': '2025-11-18T11:37:22.207037', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 8, 'details': {}}
+2025-11-18 14:37:22,207 - AUDIT: {'timestamp': '2025-11-18T11:37:22.207881', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 9, 'details': {}}
+2025-11-18 14:37:22,208 - AUDIT: {'timestamp': '2025-11-18T11:37:22.208697', 'user_id': 'alice', 'operation': 'create_entry', 'entry_id': 10, 'details': {}}
