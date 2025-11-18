@@ -51,3 +51,10 @@ docker compose up --build
 ```
 
 См. также: `SECURITY.md`, `.pre-commit-config.yaml`, `.github/workflows/ci.yml`.
+
+
+# FastAPI Secure Application
+
+![CI](https://github.com/your-username/your-repo/actions/workflows/ci.yml/badge.svg)
+
+A secure FastAPI application with authentication, audit logging, and comprehensive testing.
