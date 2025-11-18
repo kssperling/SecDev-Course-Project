@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
 from app.auth import get_current_user
-from app.entries import _ENTRIES_DB, EntryOut, EntryStatus, _next_id, _user_store
+from app.entries import _ENTRIES_DB, EntryStatus, _next_id, _user_store
 from app.entries import router as entries_router
 from app.errors import register_error_handlers
 from app.errors_secure import secure_http_exception_handler, secure_validation_exception_handler
@@ -131,8 +131,8 @@ def health(request: Request):
     return {"status": "ok"}
 
 
-@app.get("/entries", response_model=list[EntryOut], summary="List entries")
-@limiter.limit("60/minute")
+# @app.get("/entries", response_model=list[EntryOut], summary="List entries")
+# @limiter.limit("60/minute")
 def list_entries(
     request: Request,
     username: str = Depends(get_current_user),
@@ -145,8 +145,8 @@ def list_entries(
     return list(sorted(items, key=lambda e: e["id"], reverse=True))
 
 
-@app.post("/entries", response_model=EntryOut, status_code=201, summary="Create entry")
-@limiter.limit("30/minute")
+# @app.post("/entries", response_model=EntryOut, status_code=201, summary="Create entry")
+# @limiter.limit("30/minute")
 def create_entry(
     request: Request,
     payload: EntryCreate,
