@@ -1,0 +1,92 @@
+# security/.gitleaks.toml
+# Gitleaks configuration for SecDev Course Project
+
+title = "SecDev Course Project - Gitleaks Configuration"
+version = "8.18.0"
+
+# Расширение базовых правил
+[extend]
+useDefault = true
+
+# Allowlist - исключения для нашего проекта
+[allowlist]
+description = "Allowlist for SecDev Course Project"
+paths = [
+  # Директории с отчетами
+  "EVIDENCE/",
+
+  # Тестовые файлы
+  "tests/",
+
+  # Конфигурационные файлы
+  ".github/workflows/",
+  "security/",
+
+  # Документация
+  "docs/",
+  "*.md",
+
+  # Временные файлы
+  "*.log",
+  "audit.log",
+]
+
+# Исключить определенные коммиты
+commits = []
+
+# Регулярные выражения для исключения
+regexes = [
+  # Тестовые токены в тестах
+  '''token-(alice|bob)''',
+
+  # Примеры в документации
+  '''example.*[Tt]oken''',
+  '''test.*[Kk]ey''',
+
+  # Ложные срабатывания на пути
+  '''/api/v1/token''',
+  '''/auth/token''',
+
+  # Демо данные
+  '''demo.*secret''',
+  '''sample.*password''',
+
+  # Константы с префиксом TEST_
+  '''TEST_[A-Z_]+''',
+
+  # Демонстрационные API ключи
+  '''sk_test_.*''',
+  '''pk_test_.*''',
+
+  # Заглушки для конфигов
+  '''<YOUR_.*HERE>''',
+  '''\[REDACTED\]''',
+  '''\*\*\*\*\*\*\*''',
+]
+
+# Кастомизация правил
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)(api[_-]?key|apikey)[\s]*[=:][\s]*['\"][a-z0-9]{32,}['\"]'''
+tags = ["key", "API"]
+entropy = 3.5
+secretGroup = 3
+
+[[rules]]
+id = "jwt-token"
+description = "JWT Token"
+regex = '''eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*'''
+tags = ["jwt", "token"]
+entropy = 0
+
+# Настройки вывода
+[output]
+format = "json"
+verbose = true
+redact = false
+
+# Настройки обнаружения
+[detect]
+redos = "medium"
+maxTargetMegabytes = 0
