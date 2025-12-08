@@ -40,9 +40,7 @@ def create_problem_response(
     )
 
 
-async def secure_validation_exception_handler(
-    request: Request, exc: RequestValidationError
-):
+async def secure_validation_exception_handler(request: Request, exc: RequestValidationError):
     """Обработчик ошибок валидации"""
     return create_problem_response(
         status=422,
@@ -67,15 +65,11 @@ async def secure_http_exception_handler(request: Request, exc: HTTPException):
         503: ("Service Unavailable", "Service temporarily unavailable"),
     }
 
-    title, default_detail = status_mapping.get(
-        exc.status_code, ("HTTP Error", "An error occurred")
-    )
+    title, default_detail = status_mapping.get(exc.status_code, ("HTTP Error", "An error occurred"))
 
     # Используем детали из исключения или дефолтные
     detail = (
-        exc.detail
-        if (hasattr(exc, "detail") and isinstance(exc.detail, str))
-        else default_detail
+        exc.detail if (hasattr(exc, "detail") and isinstance(exc.detail, str)) else default_detail
     )
 
     return create_problem_response(

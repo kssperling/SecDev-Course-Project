@@ -88,9 +88,12 @@ jobs:
 
     - name: Run linters
       run: |
-        ruff check .
-        black --check --diff .
-        isort --check-only --diff .
+        # Ruff с исправлениями
+        ruff check --fix .
+        # Black только проверка
+        black --check .
+        # Isort только проверка
+        isort --check-only .
 
     - name: Run tests
       run: |

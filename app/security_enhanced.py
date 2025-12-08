@@ -37,9 +37,7 @@ class EnhancedLimiter:
 
             # Проверяем блокировку
             if count + 1 >= self.max_failed_attempts:
-                logging.warning(
-                    f"IP {client_ip} temporarily locked out due to failed attempts"
-                )
+                logging.warning(f"IP {client_ip} temporarily locked out due to failed attempts")
                 return True
         else:
             # Первая неудачная попытка

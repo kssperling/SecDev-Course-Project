@@ -26,9 +26,7 @@ app.add_exception_handler(HTTPException, secure_http_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
 # Остальной код...
-register_error_handlers(
-    app
-)  # Если эта функция регистрирует старые обработчики - УДАЛИТЕ её
+register_error_handlers(app)  # Если эта функция регистрирует старые обработчики - УДАЛИТЕ её
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
@@ -45,9 +43,7 @@ app.add_exception_handler(HTTPException, secure_http_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
 # Остальной код...
-register_error_handlers(
-    app
-)  # Если эта функция регистрирует старые обработчики - УДАЛИТЕ её
+register_error_handlers(app)  # Если эта функция регистрирует старые обработчики - УДАЛИТЕ её
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
@@ -94,10 +90,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         e = dict(err)
         ctx = e.get("ctx")
         if isinstance(ctx, dict):
-            e["ctx"] = {
-                k: (str(v) if isinstance(v, BaseException) else v)
-                for k, v in ctx.items()
-            }
+            e["ctx"] = {k: (str(v) if isinstance(v, BaseException) else v) for k, v in ctx.items()}
         safe_details.append(e)
 
     return JSONResponse(
@@ -177,9 +170,7 @@ def system_health():
     health_data = resource_monitor.get_system_health()
 
     if health_data["status"] == "degraded":
-        return JSONResponse(
-            status_code=503, content={"status": "degraded", "details": health_data}
-        )
+        return JSONResponse(status_code=503, content={"status": "degraded", "details": health_data})
 
     return {"status": "healthy", "details": health_data}
 
