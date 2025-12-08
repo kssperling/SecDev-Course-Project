@@ -262,11 +262,11 @@ def create_entry(payload: EntryCreate, username: str = Depends(get_current_user)
         )
 
     # Проверка использования памяти
-    memory_status = resource_monitor.check_memory_usage()
-    if memory_status["is_critical"]:
-        raise ApiError(
-            "system_overload", "System is under heavy load, please try again later", 503
-        )
+    # memory_status = resource_monitor.check_memory_usage()
+    # if memory_status["is_critical"]:
+    #     raise ApiError(
+    #         "system_overload", "System is under heavy load, please try again later", 503
+    #     )
 
     entry_id = _next_id(us)
     entry = {
