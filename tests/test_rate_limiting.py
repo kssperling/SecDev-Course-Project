@@ -22,22 +22,22 @@ def test_rate_limiting_on_health_endpoint():
     # assert response.json()["error"]["code"] == "rate_limit_exceeded"
 
 
-# def test_rate_limiting_on_entries_create():
-#     """Test rate limiting on entries creation"""
-#     # Make 30 requests quickly
-#     for i in range(30):
-#         response = client.post(
-#             "/entries",
-#             json={"title": f"Test Entry {i}", "kind": "book", "status": "todo"},
-#             headers=TOK,
-#         )
-#         if i < 30:
-#             assert response.status_code in [
-#                 201,
-#                 422,
-#             ]  # 422 for validation errors after first
-#         else:
-#             assert response.status_code == 429
+def test_rate_limiting_on_entries_create():
+    """Test rate limiting on entries creation"""
+    # Make 30 requests quickly
+    for i in range(30):
+        response = client.post(
+            "/entries",
+            json={"title": f"Test Entry {i}", "kind": "book", "status": "todo"},
+            headers=TOK,
+        )
+        if i < 30:
+            assert response.status_code in [
+                201,
+                422,
+            ]  # 422 for validation errors after first
+        else:
+            assert response.status_code == 429
 
 
 def test_rate_limit_reset():
