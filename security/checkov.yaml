@@ -1,0 +1,10 @@
+# Мини-конфигурация Checkov
+quiet: false
+compact: true
+framework:
+  - dockerfile
+  - docker_compose
+  - kubernetes
+skip-check:
+  # Добавляйте сюда check_id, которые сознательно пропускаете
+  # - CKV_K8S_9999

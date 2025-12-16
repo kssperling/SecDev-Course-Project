@@ -1,0 +1,10 @@
+# Мини-настройка Trivy (можно расширять под проект)
+scan:
+  scanners:
+    - vuln
+
+vulnerability:
+  severity:
+    - CRITICAL
+    - HIGH
+  ignore-unfixed: true

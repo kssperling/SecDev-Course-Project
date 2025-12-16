@@ -15,3 +15,15 @@ build/
 htmlcov/
 node_modules/
 .env
+.tox
+.venv
+venv/
+.idea
+.vscode
+*.log
+logs/
+Dockerfile*
+docker-compose*
+.dockerignore
+README.md
+*.sqlite3

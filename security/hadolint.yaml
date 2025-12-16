@@ -1,0 +1,8 @@
+# Базовая конфигурация Hadolint для курса P12
+ignored:
+  # Допускаем непрослеживаемые версии в pip install из wheels (уже пиннуто в requirements)
+  - DL3013
+  # Не требуем принудительный pin для apk/apt (используем slim-образ Python)
+  - DL3008
+
+failure-threshold: warning
