@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import Any, Iterable
-from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -89,25 +88,3 @@ def register_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
-
-
-def problem_detail_response(
-    status: int,
-    title: str,
-    detail: str,
-    error_type: str = "about:blank",
-    extras: dict = None,
-) -> JSONResponse:
-    """RFC 7807 совместимый ответ об ошибке"""
-    correlation_id = str(uuid4())
-    payload = {
-        "type": error_type,
-        "title": title,
-        "status": status,
-        "detail": detail,
-        "correlation_id": correlation_id,
-    }
-    if extras:
-        payload.update(extras)
-
-    return JSONResponse(status_code=status, content=payload)

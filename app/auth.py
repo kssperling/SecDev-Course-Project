@@ -4,8 +4,6 @@
 # from fastapi import Depends
 # from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 #
-# from app.token_security import token_manager
-#
 #
 # class ApiError(Exception):
 #     def __init__(self, code: str, message: str, status: int = 400):
@@ -27,15 +25,12 @@
 # ) -> str:
 #     if not credentials or credentials.scheme.lower() != "bearer":
 #         raise ApiError("unauthorized", "missing bearer token", 401)
-#
 #     token = credentials.credentials.strip()
-#     username = token_manager.validate_token(token)
-#
+#     username = TOKEN_MAP.get(token)
 #     if not username:
-#         raise ApiError("unauthorized", "invalid or expired token", 401)
-#
+#         raise ApiError("unauthorized", "invalid token", 401)
 #     return username
-# app/auth.py
+
 from __future__ import annotations
 
 from fastapi import Depends

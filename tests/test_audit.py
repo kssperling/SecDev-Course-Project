@@ -21,9 +21,9 @@ def test_audit_log_created_on_entry_creation(client):
         # Проверяем что лог файл создан и содержит запись
         assert os.path.exists(log_file)
         # with open(log_file, "r") as f:
-            # log_content = f.read()
-            # assert "AUDIT" in log_content
-            # assert "create_entry" in log_content
+        # log_content = f.read()
+        # assert "AUDIT" in log_content
+        # assert "create_entry" in log_content
 
     finally:
         if os.path.exists(log_file):
