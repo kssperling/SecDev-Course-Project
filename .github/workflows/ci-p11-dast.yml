@@ -1,0 +1,245 @@
+name: Security - DAST (OWASP ZAP)
+
+on:
+  workflow_dispatch:          # Ручной запуск
+  push:
+    branches: [ main, p11-dast-zap ]
+    paths:
+      - 'app/**'
+      - 'requirements*.txt'
+      - '.github/workflows/ci-p11-dast.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'app/**'
+      - 'requirements*.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dast_scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        # Установим зависимости для приложения
+        pip install fastapi uvicorn httpx
+
+    - name: Ensure evidence directory
+      run: mkdir -p EVIDENCE/P11
+
+    - name: Start FastAPI application
+      run: |
+        echo "Starting FastAPI application on port 8080..."
+
+        # Запускаем приложение в фоновом режиме
+        nohup uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload > app.log 2>&1 &
+        APP_PID=$!
+        echo "Application PID: $APP_PID"
+
+        # Ждем пока приложение запустится (максимум 30 секунд)
+        echo "Waiting for application to start..."
+        for i in {1..30}; do
+          if curl -s -f http://localhost:8080/health >/dev/null 2>&1; then
+            echo "✅ Application is running!"
+            break
+          fi
+          if [ $i -eq 30 ]; then
+            echo "❌ Application failed to start"
+            cat app.log
+            kill $APP_PID 2>/dev/null || true
+            exit 1
+          fi
+          sleep 1
+        done
+
+        # Сохраняем PID для последующего завершения
+        echo $APP_PID > app.pid
+        echo "Application started successfully"
+
+    - name: Run OWASP ZAP baseline scan
+      run: |
+        echo "Starting OWASP ZAP baseline scan..."
+
+        # Создаем конфигурационный файл для ZAP
+        cat > zap_config.yaml << 'EOF'
+        spider:
+          maxDuration: 30
+          maxChildren: 100
+
+        ajaxSpider:
+          enabled: true
+          maxDuration: 30
+
+        scanner:
+          maxDuration: 120
+          maxRuleDurationInMins: 10
+
+        report:
+          title: "ZAP Baseline Scan Report - SecDev Course Project"
+          template: "traditional-html"
+
+        context:
+          name: "FastAPI Application"
+          url: "http://localhost:8080"
+          includePaths: ["http://localhost:8080.*"]
+        EOF
+
+        # Запускаем ZAP baseline сканирование
+        docker run --rm \
+          --network host \
+          -v $(pwd):/zap/wrk/:rw \
+          -v $(pwd)/zap_config.yaml:/zap/config.yaml:ro \
+          owasp/zap2docker-stable:latest \
+          zap-baseline.py \
+          -t "http://localhost:8080" \
+          -c /zap/config.yaml \
+          -r "zap_baseline.html" \
+          -J "zap_baseline.json" \
+          -a \
+          -I \
+          -j \
+          --hook=/zap/auth_hook.py \
+          -m 30 || true
+
+        echo "ZAP scan completed"
+
+    - name: Generate ZAP summary report
+      run: |
+        echo "# OWASP ZAP DAST Scan Summary" > EVIDENCE/P11/zap_summary.md
+        echo "" >> EVIDENCE/P11/zap_summary.md
+        echo "**Scan Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> EVIDENCE/P11/zap_summary.md
+        echo "**Target URL:** http://localhost:8080" >> EVIDENCE/P11/zap_summary.md
+        echo "**Commit:** ${{ github.sha }}" >> EVIDENCE/P11/zap_summary.md
+        echo "**Repository:** ${{ github.repository }}" >> EVIDENCE/P11/zap_summary.md
+        echo "" >> EVIDENCE/P11/zap_summary.md
+
+        if [ -f zap_baseline.json ]; then
+          echo "## Scan Results Summary" >> EVIDENCE/P11/zap_summary.md
+          echo "" >> EVIDENCE/P11/zap_summary.md
+
+          # Используем jq для анализа JSON отчета
+          if command -v jq >/dev/null 2>&1; then
+            # Подсчет алертов по уровням
+            echo "### Alerts by Severity" >> EVIDENCE/P11/zap_summary.md
+            echo "" >> EVIDENCE/P11/zap_summary.md
+
+            jq -r '
+              if .site then
+                [.site[]?.alerts[]?.riskcode]
+                | group_by(.)
+                | map({
+                  severity:
+                    (.[0] |
+                      if . == "3" then "High"
+                      elif . == "2" then "Medium"
+                      elif . == "1" then "Low"
+                      elif . == "0" then "Informational"
+                      else "Unknown" end),
+                  count: length
+                })
+                | .[]
+                | "- **\(.severity)**: \(.count) alerts"
+              else
+                "No alerts found or invalid report format"
+              end
+            ' zap_baseline.json >> EVIDENCE/P11/zap_summary.md 2>/dev/null || \
+              echo "Unable to parse JSON report" >> EVIDENCE/P11/zap_summary.md
+          else
+            echo "Install jq for detailed report analysis" >> EVIDENCE/P11/zap_summary.md
+          fi
+
+          echo "" >> EVIDENCE/P11/zap_summary.md
+          echo "### Top 5 Alerts" >> EVIDENCE/P11/zap_summary.md
+          echo "" >> EVIDENCE/P11/zap_summary.md
+
+          if command -v jq >/dev/null 2>&1; then
+            jq -r '
+              if .site then
+                [.site[]?.alerts[]? | {
+                  risk: (
+                    .riskcode |
+                    if . == "3" then "High"
+                    elif . == "2" then "Medium"
+                    elif . == "1" then "Low"
+                    elif . == "0" then "Informational"
+                    else "Unknown" end
+                  ),
+                  name: .name,
+                  desc: .desc[:100]
+                }]
+                | sort_by(.risk)
+                | reverse
+                | .[0:5]
+                | .[]
+                | "- **\(.risk)**: \(.name) - \(.desc)..."
+              else
+                "No alerts to display"
+              end
+            ' zap_baseline.json >> EVIDENCE/P11/zap_summary.md 2>/dev/null || \
+              echo "Unable to extract top alerts" >> EVIDENCE/P11/zap_summary.md
+          fi
+
+          # Перемещаем отчеты в evidence директорию
+          mv zap_baseline.html EVIDENCE/P11/ 2>/dev/null || true
+          mv zap_baseline.json EVIDENCE/P11/ 2>/dev/null || true
+        else
+          echo "## No ZAP report generated" >> EVIDENCE/P11/zap_summary.md
+          echo "" >> EVIDENCE/P11/zap_summary.md
+          echo "ZAP scan may have failed to generate reports." >> EVIDENCE/P11/zap_summary.md
+        fi
+
+        echo "" >> EVIDENCE/P11/zap_summary.md
+        echo "## Full Reports" >> EVIDENCE/P11/zap_summary.md
+        echo "" >> EVIDENCE/P11/zap_summary.md
+        echo "For detailed information, see:" >> EVIDENCE/P11/zap_summary.md
+        echo "- HTML Report: [zap_baseline.html](zap_baseline.html)" >> EVIDENCE/P11/zap_summary.md
+        echo "- JSON Report: [zap_baseline.json](zap_baseline.json)" >> EVIDENCE/P11/zap_summary.md
+
+        echo "" >> EVIDENCE/P11/zap_summary.md
+        echo "## Next Steps" >> EVIDENCE/P11/zap_summary.md
+        echo "" >> EVIDENCE/P11/zap_summary.md
+        echo "1. Review High/Medium severity alerts" >> EVIDENCE/P11/zap_summary.md
+        echo "2. Implement fixes for critical vulnerabilities" >> EVIDENCE/P11/zap_summary.md
+        echo "3. Update security headers and configuration" >> EVIDENCE/P11/zap_summary.md
+        echo "4. Re-run DAST scan after fixes" >> EVIDENCE/P11/zap_summary.md
+
+    - name: Stop application
+      if: always()
+      run: |
+        echo "Stopping application..."
+        if [ -f app.pid ]; then
+          APP_PID=$(cat app.pid)
+          kill $APP_PID 2>/dev/null || true
+          rm -f app.pid
+        fi
+        # Убиваем любые процессы на порту 8080
+        lsof -ti:8080 | xargs kill -9 2>/dev/null || true
+        echo "Application stopped"
+
+    - name: Upload DAST evidence artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: p11-dast-evidence
+        path: |
+          EVIDENCE/P11/
+          app.log
+        retention-days: 30

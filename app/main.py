@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Dict
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
@@ -8,21 +9,56 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
 from app.auth import get_current_user
-from app.entries import _ENTRIES_DB, EntryOut, EntryStatus, _next_id, _user_store
+from app.entries import _ENTRIES_DB, EntryStatus, _next_id, _user_store
 from app.entries import router as entries_router
 from app.errors import register_error_handlers
+from app.errors_secure import secure_http_exception_handler, secure_validation_exception_handler
+from app.errors_secure_fixed import generic_exception_handler
 from app.security import limiter, rate_limit_exceeded_handler
 
-from .entries import EntryCreate
+# В начало файла добавьте
+from app.security_headers import add_security_middlewares
 
+from .entries import EntryCreate
+from .resource_monitor import resource_monitor
+
+# После создания app добавьте
 app = FastAPI(title="SecDev Course App", version="0.1.0")
-register_error_handlers(app)
+add_security_middlewares(app)  # Добавить эту строку
+
+# Регистрируем обработчики ПЕРВЫМИ
+app.add_exception_handler(RequestValidationError, secure_validation_exception_handler)
+app.add_exception_handler(HTTPException, secure_http_exception_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
+
+# Остальной код...
+register_error_handlers(
+    app
+)  # Если эта функция регистрирует старые обработчики - УДАЛИТЕ её
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.include_router(entries_router)
 __all__ = ["app", "_ENTRIES_DB"]
+
+app = FastAPI(title="SecDev Course App", version="0.1.0")
+
+
+# Регистрируем обработчики ПЕРВЫМИ
+app.add_exception_handler(RequestValidationError, secure_validation_exception_handler)
+app.add_exception_handler(HTTPException, secure_http_exception_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
+
+# Остальной код...
+register_error_handlers(
+    app
+)  # Если эта функция регистрирует старые обработчики - УДАЛИТЕ её
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
+app.include_router(entries_router)
 
 
 class ApiError(Exception):
@@ -108,8 +144,8 @@ def health(request: Request):
     return {"status": "ok"}
 
 
-@app.get("/entries", response_model=list[EntryOut], summary="List entries")
-@limiter.limit("60/minute")
+# @app.get("/entries", response_model=list[EntryOut], summary="List entries")
+# @limiter.limit("60/minute")
 def list_entries(
     request: Request,
     username: str = Depends(get_current_user),
@@ -122,8 +158,8 @@ def list_entries(
     return list(sorted(items, key=lambda e: e["id"], reverse=True))
 
 
-@app.post("/entries", response_model=EntryOut, status_code=201, summary="Create entry")
-@limiter.limit("30/minute")
+# @app.post("/entries", response_model=EntryOut, status_code=201, summary="Create entry")
+# @limiter.limit("30/minute")
 def create_entry(
     request: Request,
     payload: EntryCreate,
@@ -139,3 +175,65 @@ def create_entry(
     }
     us["entries"].append(entry)
     return entry
+
+
+@app.get("/system/health", tags=["system"])
+def system_health():
+    """Расширенная проверка здоровья системы"""
+    health_data = resource_monitor.get_system_health()
+
+    if health_data["status"] == "degraded":
+        return JSONResponse(
+            status_code=503, content={"status": "degraded", "details": health_data}
+        )
+
+    return {"status": "healthy", "details": health_data}
+
+
+@app.get("/system/metrics", tags=["system"])
+def system_metrics():
+    """Метрики системы для мониторинга"""
+    return resource_monitor.get_system_health()
+
+
+# Заменяем обработчики ошибок
+app.add_exception_handler(RequestValidationError, secure_validation_exception_handler)
+app.add_exception_handler(HTTPException, secure_http_exception_handler)
+
+
+# В app/main.py добавьте или обновите эндпоинты:
+
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint for monitoring"""
+    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+
+
+@app.get("/api/v1/info")
+def api_info():
+    """API information endpoint"""
+    return {
+        "name": "SecDev Course API",
+        "version": "1.0.0",
+        "status": "active",
+        "endpoints": ["/health", "/entries", "/items", "/system/health"],
+    }
+
+
+@app.post("/api/v1/echo")
+async def echo_endpoint(data: dict):
+    """Echo endpoint for testing POST requests"""
+    return {"received": data, "timestamp": datetime.utcnow().isoformat()}
+
+
+@app.get("/api/v1/users/{user_id}")
+def get_user(user_id: int):
+    """User endpoint for testing path parameters"""
+    return {"user_id": user_id, "username": f"user_{user_id}"}
+
+
+@app.get("/api/v1/search")
+def search_items(q: str = Query(None), limit: int = Query(10)):
+    """Search endpoint for testing query parameters"""
+    return {"query": q, "limit": limit, "results": []}
