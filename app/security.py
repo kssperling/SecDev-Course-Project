@@ -1,5 +1,3 @@
-from urllib import request
-
 from fastapi import HTTPException, Request
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
@@ -19,15 +17,3 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
             }
         },
     )
-
-
-def get_rate_limit_key(user_role: str = "anonymous") -> str:
-    """Ключ для rate limiting с учетом роли"""
-    base_key = get_remote_address(request)
-    return f"{base_key}:{user_role}"
-
-
-# Конфигурируемые лимиты
-RATE_LIMITS = {"anonymous": "10/minute", "user": "100/minute", "admin": "1000/minute"}
-
-limiter = Limiter(key_func=get_remote_address)
